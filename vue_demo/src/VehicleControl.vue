@@ -1,81 +1,78 @@
-
 <template>
   <div>
-    <img src="./rocket-svgrepo-com.svg" alt="rocket"/>
-    <div v-for="player in players" :key="player.name">
-      <div>{{ player.name }}</div>
-      <div>{{ player.x }}, {{ player.y }}, {{ player.angle }}</div>
+    <Registor @registorId="registerVehicle" />
+    <div v-if="players.length > 0">
+      <Vehicle 
+      v-for="player in players"
+      :key="player.name"
+      :name="player.name"
+      :x="player.x"
+      :y="player.y"
+      :angle="player.angle"
+       />
     </div>
-
-    <!-- Register button -->
-    <button @click="registerVehicle">Register Vehicle</button>
   </div>
 </template>
 
-<script lang="ts">
-import { onUnmounted } from 'vue';
-import { Player, directionOptions, getBoard, move, register } from './gameService';
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue';
+import Vehicle from './Vehicle.vue';
+import { Player, directionOptions, getBoard, move } from './gameService';
+import Registor from './Registor.vue';
 
-export default {
-  name: 'VehicleControl',
-  data() {
-    return {
-      id: 0,
-      players: [] as Player[],
-    };
-  },
-  methods: {
-    async registerVehicle() {
-      this.id = await register('YourPlayerName'); // Adjust the name accordingly
-    },
-    async moveVehicle(direction: directionOptions) {
-      await move(this.id, direction);
-    },
-  },
-  async mounted() {
-    // Fetch board data periodically
-    const updateBoard = async () => {
-      const board = await getBoard();
-      this.players = board.players;
-    };
+const id = ref(0);
+const players = ref([] as Player[]);
+const updateInterval = ref(0)
 
-    const controlKeys = {
-        forwards: "w",
-        backwards: "s",
-        left: "a",
-        right: "d",
-      };
-      
-      const keydownListener = async (event: KeyboardEvent) => {
-        if (event.key === controlKeys.forwards) await move(id, "Forward");
-        if (event.key === controlKeys.backwards) await move(id, "Backward");
-        if (event.key === controlKeys.left) await move(id, "Left");
-        if (event.key === controlKeys.right) await move(id, "Right");
-      };
-      
-      const keyupListener = async (event: KeyboardEvent) => {
-        if (event.key === controlKeys.forwards) await move(id, "StopForward");
-        if (event.key === controlKeys.backwards) await move(id, "StopBackward");
-        if (event.key === controlKeys.left) await move(id, "StopLeft");
-        if (event.key === controlKeys.right) await move(id, "StopRight");
-      };
-      document.addEventListener('keydown', keydownListener);
+const controlKeys = {
+  forwards: 'w',
+  backwards: 's',
+  left: 'a',
+  right: 'd',
+};
 
-// Fetch initial board data
-await updateBoard();
+const registerVehicle = async (playerid: number) => {
+    id.value = playerid
+};
 
-// Set up a periodic update
-this.updateInterval = setInterval(updateBoard, 1000);
+const moveVehicle = async (direction: directionOptions) => {
+  await move(id.value, direction);
+};
 
-// Clean up listeners and interval on component unmount
+const keydownListener = async (event: KeyboardEvent) => {
+  if (event.key === controlKeys.forwards) await moveVehicle('Forward');
+  if (event.key === controlKeys.backwards) await moveVehicle('Backward');
+  if (event.key === controlKeys.left) await moveVehicle('Left');
+  if (event.key === controlKeys.right) await moveVehicle('Right');
+};
+
+const keyupListener = async (event: KeyboardEvent) => {
+  if (event.key === controlKeys.forwards) await moveVehicle('StopForward');
+  if (event.key === controlKeys.backwards) await moveVehicle('StopBackward');
+  if (event.key === controlKeys.left) await moveVehicle('StopLeft');
+  if (event.key === controlKeys.right) await moveVehicle('StopRight');
+};
+
+onMounted(() => {
+  document.addEventListener('keydown', keydownListener);
+  document.addEventListener('keyup', keyupListener);
+  updateInterval.value = setInterval(updateBoard, 1000);
+});
+
 onUnmounted(() => {
   document.removeEventListener('keydown', keydownListener);
-  clearInterval(this.updateInterval);
+  document.removeEventListener('keyup', keyupListener);
+  clearInterval(updateInterval.value);
 });
-},
+
+const updateBoard = async () => {
+  const board = await getBoard();
+  players.value = board.players;
 };
 </script>
 
 <style scoped>
+  .icon {
+    /* Your styling here */
+  }
 </style>
-}
